@@ -1,7 +1,7 @@
 //********************************************
-// Student Name			:
-// Student ID			:
-// Student Email Address:
+// Student Name			: Yin-Chi Chiu
+// Student ID			: 113652039
+// Student Email Address: andrew950324andrew@gmail.com
 //********************************************
 //
 // Instructor: Sai-Keung WONG

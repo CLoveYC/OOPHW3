@@ -19,10 +19,10 @@ void MY_SYSTEM_APP::showStudentInfo( ) const
     cout << "Data Structures and Object-Oriented Programming" << endl;
     cout << "Instructor: Prof. Sai-Keung Wong" << endl;
     cout << "----------------------------------------------------------------" << endl;
-    cout << "Date: 2026/05/01" << endl;
-	cout << "Student ID:\t" << endl;
-	cout << "Student Name:\t" << endl;
-	cout << "Student Email:\t" << endl;
+    cout << "Date: 2026/06/01" << endl;
+	cout << "Student ID:\t113652039" << endl;
+	cout << "Student Name:\tYin-Chi Chiu" << endl;
+	cout << "Student Email:\tandrew950324andrew@gmail.com" << endl;
     cout << "****************************************************************" << endl;
     cout << "****************************************************************" << endl;
 }
