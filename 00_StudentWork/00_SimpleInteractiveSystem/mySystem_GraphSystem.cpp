@@ -1,7 +1,7 @@
 //********************************************
-// Student Name			:
-// Student ID			:
-// Student Email Address:
+// Student Name			: Yin-Chi Chiu
+// Student ID			: 113652039
+// Student Email Address: andrew950324andrew@gmail.com
 //********************************************
 //
 //
@@ -226,12 +226,23 @@ void GRAPH_SYSTEM::createNet_RadicalCircular( int n ) {
 //
 int GRAPH_SYSTEM::addNode( float x, float y, float z, float r )
 {
-    //GRAPH_NODE *g;
+    GRAPH_NODE *g;
+	g = getFreeNode();
+
+	if (g == nullptr) return -1;
+	g->p.x = x;
+	g->p.y = y;
+	g->p.z = z;
+	g->r = r;
+
+    g->edgeID.clear();
+	g->visited = false;
+    g->depth = -1;
     //g = getFreeNode( );
     //
     // modify and add your code heres
     //
-    return -1;
+    return g->id;
 }
 
 //
@@ -240,13 +251,20 @@ int GRAPH_SYSTEM::addNode( float x, float y, float z, float r )
 //
 int GRAPH_SYSTEM::addEdge( int nodeID_0, int nodeID_1 )
 {
-    //GRAPH_EDGE *e;
-    //e = getFreeEdge( );
+    GRAPH_EDGE *e;
+    e = getFreeEdge( );
+	if (e == nullptr) return -1;
+    
+	e->nodeID[0] = nodeID_0;
+	e->nodeID[1] = nodeID_1;
+
+	mNodeArr_Pool[nodeID_0].edgeID.push_back(e->id);
+	mNodeArr_Pool[nodeID_1].edgeID.push_back(e->id);
+
+    return e->id;
     //
     // modify and add your code heres
     //
-
-    return -1;
 }
 
 void GRAPH_SYSTEM::askForInput( )
