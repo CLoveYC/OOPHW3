@@ -1,6 +1,6 @@
 //********************************************
-// Student Name			:
-// Student ID			:
+// Student Name			: Yin-Chi Chiu
+// Student ID			: 113652039
 //
 // Instructor: Sai-Keung WONG
 // Email:	cswingo@cs.nctu.edu.tw
