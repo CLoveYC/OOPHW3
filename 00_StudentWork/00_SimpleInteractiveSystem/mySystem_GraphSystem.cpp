@@ -161,18 +161,116 @@ void GRAPH_SYSTEM::createDefaultGraph( )
 
 void GRAPH_SYSTEM::createRandomGraph_DoubleCircles(int n)
 {
-    reset( );
+    reset();
 
-    //n = 36;
-    float dx = 5.0;
-    float dz = 5.0;
-    float r = 15; // radius
-    float d = 10; // layer distance
-    float offset_x = 90.;
-    float offset_z = 15.;
-    //
-    // modify and add your code heres
-    //
+    if (n <= 0) return;
+
+    static bool seeded = false;
+    if (!seeded) {
+        srand((unsigned int)time(NULL));
+        seeded = true;
+    }
+
+    const float PI = 3.14159265358979323846f;
+
+    float r = 15.0f;
+    float d = 10.0f;
+    float r_outer = r + d; // r_inner + layer distance
+
+    float offset_x = 90.0f;
+    float offset_z = 15.0f;
+
+    std::vector<int> inner_nodes;
+    std::vector<int> outer_nodes;
+
+    float angle_step = 2.0f * PI / (float)n;
+
+    auto rand01 = []() -> float {
+        return (float)rand() / (float)RAND_MAX;
+        };
+
+    // 產生內圈與外圈節點
+    for (int i = 0; i < n; ++i) {
+        // 讓每個點在自己的區間附近隨機偏移，這樣每次按 5 會不同
+        float jitter_inner = (rand01() - 0.5f) * angle_step * 0.7f;
+        float jitter_outer = (rand01() - 0.5f) * angle_step * 0.7f;
+
+        float angle_inner = i * angle_step + jitter_inner;
+        float angle_outer = i * angle_step + jitter_outer;
+
+        float px_i = offset_x + r * cos(angle_inner);
+        float pz_i = offset_z + r * sin(angle_inner);
+
+        float px_o = offset_x + r_outer * cos(angle_outer);
+        float pz_o = offset_z + r_outer * sin(angle_outer);
+
+        inner_nodes.push_back(addNode(px_i, 0.0f, pz_i));
+        outer_nodes.push_back(addNode(px_o, 0.0f, pz_o));
+    }
+
+    // 不要加這兩段，否則會變成兩個圓環圖，不是題目圖
+    /*
+    for (int i = 0; i < n; ++i) {
+        addEdge(inner_nodes[i], inner_nodes[(i + 1) % n]);
+        addEdge(outer_nodes[i], outer_nodes[(i + 1) % n]);
+    }
+    */
+
+    auto segmentGoesInsideInnerCircle = [&](const vector3& a, const vector3& b) -> bool {
+        float vx = b.x - a.x;
+        float vz = b.z - a.z;
+
+        float len2 = vx * vx + vz * vz;
+        if (len2 < 0.000001f) return false;
+
+        // 找圓心投影到線段 ab 的位置 t
+        float cx = offset_x - a.x;
+        float cz = offset_z - a.z;
+
+        float t = (cx * vx + cz * vz) / len2;
+
+        // t <= 0 表示最近點在 inner node 端點附近
+        // 因為 inner node 本來就在 inner circle 上，所以不算穿過
+        if (t <= 0.0001f || t >= 1.0f) {
+            return false;
+        }
+
+        float proj_x = a.x + t * vx;
+        float proj_z = a.z + t * vz;
+
+        float dx = proj_x - offset_x;
+        float dz = proj_z - offset_z;
+
+        float dist2 = dx * dx + dz * dz;
+
+        // 小於內圈半徑平方，代表線段真的進入 inner circle 內部
+        return dist2 < r_inner * r_inner - 0.01f;
+        };
+
+    // 每個 inner node 連到一個 close outer node
+    for (int i = 0; i < n; ++i) {
+        vector3 p_in;
+        double dummy_r;
+        getNodeInfo(inner_nodes[i], dummy_r, p_in);
+
+        std::vector<int> close_outer_nodes;
+
+        for (int j = 0; j < n; ++j) {
+            vector3 p_out;
+            getNodeInfo(outer_nodes[j], dummy_r, p_out);
+
+            if (!segmentGoesInsideInnerCircle(p_in, p_out)) {
+                close_outer_nodes.push_back(j);
+            }
+        }
+
+        if (!close_outer_nodes.empty()) {
+            int pick = rand() % close_outer_nodes.size();
+            int chosen_outer = close_outer_nodes[pick];
+
+            addEdge(inner_nodes[i], outer_nodes[chosen_outer]);
+        }
+    }
 }
 
 void GRAPH_SYSTEM::createNet_Circular( int n, int num_layers )
@@ -208,11 +306,14 @@ void GRAPH_SYSTEM::createNet_Circular( int n, int num_layers )
             }
         }
 
-        for (int i = 0; i < n; ++i) {
-            int next_i = (i + 1) % n;
-            addEdge(curr_layer_nodes[i], curr_layer_nodes[next_i]);
+        // 最外圈不用畫 (layer < num_layers) 才連外環
+        if (layer < num_layers) {
+            for (int i = 0; i < n; ++i) {
+                int next_i = (i + 1) % n;
+                addEdge(curr_layer_nodes[i], curr_layer_nodes[next_i]);
+            }
         }
-        
+
         prev_layer_nodes = curr_layer_nodes;
     }
 }
@@ -226,10 +327,41 @@ void GRAPH_SYSTEM::createNet_Square( int n, int num_layers )
     float d = 5; // layer distance 
     float offset_x = 5.;
     float offset_z = 5.;
-    //
-    // modify and add your code heres
-    //
 
+    int W = n + 2 * (num_layers - 1);
+    std::vector<std::vector<int>> grid(W, std::vector<int>(W, -1));
+
+    for (int i = 0; i < W; ++i) {
+        for (int j = 0; j < W; ++j) {
+            bool in_hole = false;
+
+            int inner_min = num_layers - 1;
+            int inner_max = W - num_layers;
+
+            if (i > inner_min && i < inner_max && j > inner_min && j < inner_max) {
+                in_hole = true;
+            }
+
+            if (!in_hole) {
+                float px = offset_x + i * dx;
+                float pz = offset_z + j * dz;
+                grid[i][j] = addNode(px, 0.0, pz);
+            }
+        }
+    }
+
+    for (int i = 0; i < W; ++i) {
+        for (int j = 0; j < W; ++j) {
+            if (grid[i][j] != -1) {
+                if (i + 1 < W && grid[i+1][j] != -1) {
+                    addEdge(grid[i][j], grid[i+1][j]);
+                }
+                if (j + 1 < W && grid[i][j+1] != -1) {
+                    addEdge(grid[i][j], grid[i][j+1]);
+                }
+            }
+        }
+    }
 }
 void GRAPH_SYSTEM::createNet_RadicalCircular( int n ) {
 
@@ -240,11 +372,19 @@ void GRAPH_SYSTEM::createNet_RadicalCircular( int n ) {
 
     float r = 15; // radius
 
-    //
-    // modify and add your code heres
-    //
+    int center_id = addNode(offset_x, 0.0, offset_z);
 
+    float angle_step = 2.0f * 3.14159f / n;
 
+    for (int i = 0; i < n; ++i) {
+        float angle = i * angle_step;
+        float px = offset_x + r * cos(angle);
+        float pz = offset_z + r * sin(angle);
+
+        int node_id = addNode(px, 0.0, pz);
+
+        addEdge(node_id, center_id);
+    }
 }
 
 //
@@ -320,10 +460,22 @@ void GRAPH_SYSTEM::askForInput( )
 GRAPH_NODE *GRAPH_SYSTEM::findNearestNode( double x, double z, double &cur_distance2 ) const
 {
     GRAPH_NODE *n = nullptr;
-    //cur_distance2 = -1.0;
-    //
-    // modify and add your code heres
-    //
+    cur_distance2 = -1.0;
+
+    for (int i = 0; i < mCurNumOfActiveNodes; ++i) {
+        int nodeID = mActiveNodeArr[i];
+        GRAPH_NODE *curr_node = &mNodeArr_Pool[nodeID];
+
+        double dx = curr_node->p.x - x;
+        double dz = curr_node->p.z - z;
+        double dist2 = dx * dx + dz * dz;
+
+        if (n == nullptr || dist2 < cur_distance2) {
+            n = curr_node;
+            cur_distance2 = dist2;
+        }
+    }
+
     return n;
 }
 
