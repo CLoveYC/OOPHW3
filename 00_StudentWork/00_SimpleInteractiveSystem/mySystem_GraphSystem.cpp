@@ -147,15 +147,16 @@ void GRAPH_SYSTEM::createDefaultGraph( )
     float offset_z = 15.;
 
     int n_0 = addNode(offset_x + 0.0, 0.0, offset_z + 0.0 );
+	int n_1 = addNode(offset_x + 5.0, 0.0, offset_z + 0.0);
+	int n_2 = addNode(offset_x + 0.0, 0.0, offset_z + 5.0);
     cout << "n_0:"<< n_0 << endl;
 
     //
     // modify and add your code heres
     //
 
-    //addEdge( n_0, n_1 );
-    //addEdge( n_1, n_2 );
-
+    addEdge( n_0, n_1 );
+    addEdge( n_1, n_2 );
 }
 
 void GRAPH_SYSTEM::createRandomGraph_DoubleCircles(int n)
@@ -185,9 +186,35 @@ void GRAPH_SYSTEM::createNet_Circular( int n, int num_layers )
     float offset_x = 90.;
     float offset_z = 30.;
 
-    //
-    // modify and add your code heres
-    //
+    std::vector<int> prev_layer_nodes;
+
+    for (int layer = 1; layer <= num_layers; ++layer) {
+        std::vector<int> curr_layer_nodes;
+        float layer_radius = r + (layer - 1) * d;
+        float angle_step = 2.0f * 3.14159f / n;
+
+        for (int i = 0; i < n; ++i) {
+            float angle = i * angle_step;
+            float px = offset_x + layer_radius * cos(angle);
+            float pz = offset_z + layer_radius * sin(angle);
+            int node_id = addNode(px, 0.0, pz);
+            curr_layer_nodes.push_back(node_id);
+        }
+
+        if (layer == 1) {
+        } else {
+            for (int i = 0; i < n; ++i) {
+                addEdge(curr_layer_nodes[i], prev_layer_nodes[i]);
+            }
+        }
+
+        for (int i = 0; i < n; ++i) {
+            int next_i = (i + 1) % n;
+            addEdge(curr_layer_nodes[i], curr_layer_nodes[next_i]);
+        }
+        
+        prev_layer_nodes = curr_layer_nodes;
+    }
 }
 void GRAPH_SYSTEM::createNet_Square( int n, int num_layers )
 {
